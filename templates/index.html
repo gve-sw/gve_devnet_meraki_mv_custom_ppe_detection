@@ -1,0 +1,192 @@
+<!-- Instructions page: This page includes information about the frontend template -->
+
+{% extends "masterPage.html" %}
+
+{% block content %}
+<style>
+    /* State icon */
+    .state-indicator {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%; /* Create a circle */
+        display: inline-block;
+        margin-right: 10px;
+    }
+
+    .state-on {
+        background-color: green;
+    }
+
+    .state-off {
+        background-color: red;
+    }
+
+    .state-unknown {
+        background-color: lightgray;
+    }
+</style>
+
+{% if display_feed == False %}
+<div class="row">
+    <!-- Left Rail -->
+    <div class="col-md-4">
+        <div class="section">
+            <div class="panel panel--loose panel--raised base-margin-bottom">
+                <h2 class="subtitle">Select Camera to Monitor</h2>
+                <hr>
+                <form action="/display" method="POST">
+                    <!--Dropdown Select-->
+                    <div class="form-group base-margin-bottom">
+                            <div class="form-group dropdown">
+                                <div class="form-group__text select">
+                                    <input id="select-type-styled" name="camera_selected">
+                                    <label for="select-type-styled">Camera</label>
+                                </div>
+                                <div class="dropdown__menu" id="dropdown-option">
+                                    {% for key, value in camera_list.items() %}
+                                        <a>{{key}}</a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                    </div>
+
+                    <!-- Button area-->
+                    <div class="row">
+                        <div class="col-md-4">
+                            <input id="settings-submit" class="btn btn-primary" type="submit" value="Tune in!">
+                        </div>
+                        <div class="col-lg-8" id="loading-panel"></div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Rail -->
+    <div class="col-0 col-xl-3 col-md-3"></div>
+</div>
+{% else %}
+<div class="row">
+    <!-- Left Rail -->
+    <div class="col-md-6">
+        <div class="section">
+            <div class="panel panel--loose panel--raised">
+                <h2 class="subtitle">RTSP Stream from {{serial_number}}</h2>
+                <hr>
+                <img src="{{ url_for('video_feed') }}" width="900" height="640">
+                <hr>
+                <div class="row no-gutters">
+                    <div class="col-lg-12 qtr-margin-bottom">
+
+                    {% for key, value in required_ppe.items()%}
+                        {% if value == True %}
+                            <div class="form-group form-group--inline">
+                                <label class="checkbox disabled">
+                                    <input type="checkbox" checked>
+                                    <span class="checkbox__input"></span>
+                                    <span class="checkbox__label">{{key}}</span>
+                                </label>
+                            </div>
+                        {% else %}
+                         <div class="form-group form-group--inline">
+                                <label class="checkbox disabled">
+                                    <input type="checkbox">
+                                    <span class="checkbox__input"></span>
+                                    <span class="checkbox__label">{{key}}</span>
+                                </label>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Right Rail -->
+    <div class="col-md-6">
+        <div class="section">
+            <div class="panel panel--loose panel--raised">
+                <h2 class="subtitle">Most Recent Snapshot (PPE Annotated)</h2>
+                <hr>
+                <img id="ppe_image" src="{{ image_path }}" width="900" height="640">
+                <hr>
+                <div class="row half-margin-left">
+                    <div class="col-md-6">
+                        <div class="row">
+                            <!-- PPE Icon (dynamically built) -->
+                            <div id="ppe_icon"></div>
+                            <!-- PPE State (dynamically built)  -->
+                            <div id="ppe_state"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+
+<script>
+    // Function to update the image source
+    function updateImageSource() {
+        const imgElement = document.getElementById('ppe_image');
+
+        // Check if imgElement is null or undefined
+        if (imgElement.src.includes("None") || imgElement.src.includes("null")) {
+            // Make an API call to retrieve the image path
+            fetch('/retrieve_image/{{serial_number}}')
+                .then(response => response.json())
+                .then(data => {
+                    // Create a new image element
+                    imgElement.src = data['image_path'] + "?t=" + new Date().getTime();
+                })
+                .catch(error => {
+                    console.error('Error retrieving image:', error);
+                });
+        } else {
+            // Update the image source with a timestamp to force reloading
+            img_src = imgElement.src.split("?t=")
+            imgElement.src = img_src[0] + "?t=" + new Date().getTime();
+        }
+    }
+
+    function updateState() {
+    // Make an AJAX request to the Flask app to get the current state
+    fetch('/get_state')
+        .then(response => response.json())
+        .then(data => {
+            var stateContainer = document.getElementById('ppe_state');
+            var iconContainer = document.getElementById('ppe_icon');
+            var stateIndicator = '';
+            var iconIndicator = '';
+
+            if (data.current_state === true) {
+                stateIndicator = `<b class="subtitle">PPE State: Valid</b>`;
+                iconIndicator = `<div class="state-indicator state-on"></div>`
+            } else if (data.current_state === false) {
+                stateIndicator = `<b class="subtitle">PPE State: Invalid</b>`;
+                iconIndicator = `<div class="state-indicator state-off"></div>`
+            } else {
+                stateIndicator = `<b class="subtitle">PPE State: Unknown</b>`;
+                iconIndicator = `<div class="state-indicator state-unknown"></div>`
+            }
+
+            stateContainer.innerHTML = stateIndicator;
+            iconContainer.innerHTML = iconIndicator;
+        })
+        .catch(error => {
+            console.error('Error fetching state:', error);
+        });
+}
+
+// Call the updateState function initially and every 5 seconds
+updateState();
+setInterval(updateState, 5000);
+
+// Periodically update the image source every 5 seconds (5000 milliseconds)
+setInterval(updateImageSource, 5000);
+
+
+</script>
+{%  endblock %}

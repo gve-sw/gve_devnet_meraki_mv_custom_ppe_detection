@@ -1,0 +1,70 @@
+{
+    "type": "AdaptiveCard",
+    "body": [
+        {
+            "type": "TextBlock",
+            "size": "Medium",
+            "weight": "Bolder",
+            "text": "PPE Violation Detected"
+        },
+        {
+            "type": "TextBlock",
+            "spacing": "None",
+            "text": "Default_Timestamp",
+            "isSubtle": true,
+            "wrap": true
+        },
+        {
+            "type": "ColumnSet",
+            "columns": [
+                {
+                    "type": "Column",
+                    "width": "stretch",
+                    "items": [
+                        {
+                            "type": "FactSet",
+                            "facts": [
+                                {
+                                    "title": "Camera:",
+                                    "value": "Default_Serial"
+                                },
+                                {
+                                    "title": "Location:",
+                                    "value": "Default_Location"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "type": "Column",
+                    "width": "stretch",
+                    "items": [
+                        {
+                            "type": "FactSet",
+                            "facts": [
+                                {
+                                    "title": "PPE Zone",
+                                    "value": "Default Zone"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "Image",
+            "url": "Default_URL"
+        },
+        {
+            "type": "TextBlock",
+            "spacing": "None",
+            "text": "Image_Removal_Time",
+            "isSubtle": true,
+            "wrap": true
+        }
+    ],
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "version": "1.5"
+}

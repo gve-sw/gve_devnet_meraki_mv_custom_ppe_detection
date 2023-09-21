@@ -1,0 +1,10 @@
+[
+  {
+        "ppe_zone_name": "_all_",
+        "ppe_items": {
+          "helmet": true,
+          "vest": true,
+          "glasses": true
+        }
+  }
+]

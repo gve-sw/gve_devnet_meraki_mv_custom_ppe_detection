@@ -1,0 +1,16 @@
+# Python files and venv
+venv
+__pycache__/
+
+# IDE Files
+.idea/
+.DS_Store
+
+# Ignore snapshots
+static/snapshots
+
+# Ignore hosted images
+static/hosted_images
+
+# Raw dataset
+ppe_dataset_raw
