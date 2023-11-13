@@ -6,11 +6,19 @@ __pycache__/
 .idea/
 .DS_Store
 
+# Sensitive Files
+.env
+config.py
+cameras.json
+ppe_zones.json
+
 # Ignore snapshots
-static/snapshots
+ppe_app/snapshots
 
 # Ignore hosted images
-static/hosted_images
+microsoft_teams_app/hosted_images
 
 # Raw dataset
 ppe_dataset_raw
+
+ppe_app/detection/live_video_test.py

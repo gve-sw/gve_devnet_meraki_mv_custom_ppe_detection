@@ -1,0 +1,36 @@
+# Docker Compose file for easier build and test in local machine
+version: "3.8"
+services:
+  ppe_visualization_dashboard:
+    container_name: ppe_visualization_dashboard
+    build:
+      context: ./
+      dockerfile: ./ppe_app/visualization_dashboard/Dockerfile
+    ports:
+      - 4000:4000
+    environment:
+      - MERAKI_API_KEY=${MERAKI_API_KEY}
+    volumes:
+      - ./ppe_app/snapshots:/ppe_app/snapshots
+
+  ppe_detection:
+    container_name: ppe_detection
+    build:
+      context: ./
+      dockerfile: ./ppe_app/detection/Dockerfile
+    environment:
+      - MERAKI_API_KEY=${MERAKI_API_KEY}
+      - MICROSOFT_TEAMS_URL=${MICROSOFT_TEAMS_URL}
+      - IMAGE_RETENTION_DAYS=${IMAGE_RETENTION_DAYS}
+    volumes:
+      - ./ppe_app/snapshots:/ppe_app/snapshots
+
+  microsoft_teams_app:
+    container_name: microsoft_teams_app
+    build: ./microsoft_teams_app
+    ports:
+      - 3500:3500
+    environment:
+      - IMAGE_RETENTION_DAYS=${IMAGE_RETENTION_DAYS}
+    volumes:
+      - ./microsoft_teams_app/hosted_images:/microsoft_teams_app/hosted_images

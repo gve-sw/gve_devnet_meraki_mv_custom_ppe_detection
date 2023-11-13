@@ -3,15 +3,15 @@
 
 <!doctype html>
 <html id="styleguide" class="" lang="en">
-        
+
     <head>
             <meta charset="utf-8">
             <meta http-equiv="X-UA-Compatible" content="IE=edge">
             <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-            <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">  
-                              
+            <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
             <title>Meraki MV - PPE Detection Portal</title>
-            
+
                 <!--CHOOSE-->
                 <!--Meraki Design:-->
                     <link rel="stylesheet" href="{{ url_for('static', filename='css/mui-variables.css') }}">
@@ -27,7 +27,7 @@
 
                 <!--script link for Charts.js library-->
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.min.js"></script>
-      
+
             <link rel="stylesheet" href="{{ url_for('static', filename='css/customStyles.css') }}">
             <script src="https://code.jquery.com/jquery-3.0.0.min.js" integrity="sha256-JmvOoLtYsmqlsWxa7mDSLMwa6dZ9rrIdtrrVYRnDRH0=" crossorigin="anonymous"></script>
             <script src="{{ url_for('static', filename='js/styleguide.js') }}"></script>
@@ -36,7 +36,7 @@
 
         </head>
         <body class="cui">
-    
+
              <!-- Header -->
             <nav class="header" id="styleguideheader" role="navigation">
                 <div class="container-fluid">
@@ -52,8 +52,8 @@
                         <div class="header-panel header-panel--center">
                         </div>
                         <!--Link area (right)-->
-                        <div class="header-panel header-panel--right"> 
-                            
+                        <div class="header-panel header-panel--right">
+
                             <!--CUSTOMIZE: Add or remove Header links-->
                             <!--PASS INFO: Header links are hidden, if hiddenLinks=false variable is passed to child template-->
                             <a class="header-item {% if hiddenLinks == True %}hidden-5xl-down{% endif %}" href="/"><span class="icon-home"></span></a>
@@ -61,22 +61,22 @@
 <!--                            <a class="header-item {% if hiddenLinks == True %}hidden-5xl-down{% endif %}" href="/">Logout</a>-->
                             <!--CUSTOMIZE END-->
 
-                        </div>  
+                        </div>
                     </div>
                 </div>
             </nav>
-  
+
             <!--Content-->
             <div class="content content--alt">
-                <div class="container-fluid">                
-    
+                <div class="container-fluid">
+
                         {% block content %}
 
                         {% endblock %}
-                        
+
                 </div>
             </div>
-            
+
             <!-- Footer -->
             <footer class="footer">
                 <div class="footer__links">
@@ -90,7 +90,7 @@
                         <!-- OR -->
                         <!--Cisco Design:-->
 <!--                            <li><a href="https://gve-devnet.cisco.com/"><img id="footer-link-gve-devnet" src="{{ url_for('static', filename='images/Logo_long_blue.png')}}"></a></li>-->
-                         
+
                         <!--CHOOSE END-->
 
                         <li><a href="http://www.cisco.com/cisco/web/siteassets/contacts/index.html" target="_blank">Contacts</a></li>

@@ -15,9 +15,9 @@ PPE Detection States:
 **Note**: Due to the nature of ML, this model is highly trained for the original use case. Accuracy and performance millage will vary.
 Refer to the [image dataset](https://universe.roboflow.com/cisco-systems-c21fi/devnet-custom-mv-ppe-detection) to view the raw image set and information around model accuracy, class ids, etc. Raw image set is **NOT** included in this repo.
 
-Model Performance Graphs can be found under `ppe_dataset/`, for example:
+Model Performance Graphs can be found under `ppe_app/detection/ppe_dataset/`, for example:
 
-![](ppe_dataset/results.png)
+![results.png](IMAGES/results.png)
 
 ## Contacts
 * Trevor Maco 
@@ -63,7 +63,7 @@ In order to use the Meraki API, you need to enable the API for your organization
 2. Note the Webhook URL
 
 #### Ngrok
-To send annotated snapshots in Microsoft Teams messages, it's required for images to be available at a public URL. A separate flask app (`serve_images.py`) can be run on http://localhost:3500 to serve images from the `static/hosted_images` directory, but ngrok is required to make the app publicly reachable. It's recommened in production to use a cloud based solution for uploading and using the images.
+To send annotated snapshots in Microsoft Teams messages, it's required for images to be available at a public URL. A separate flask app (`microsoft_teams_app/serve_images.py`) can be run on http://localhost:3500 to serve images from the `microsoft_teams_app/hosted_images` directory, but ngrok is required to make the app publicly reachable. It's recommended in production to use a cloud based solution for uploading and using the images (AWS S3, etc.).
 
 Follow these instructions to set up ngrok:
 1. Create a free account or login to [Ngrok](https://ngrok.com/).
@@ -83,7 +83,9 @@ ngrok http 3500
 
 #### cameras.json and ppe_zones.json
 
-A central part of the app is defining camera's to observe and what defines a full 'PPE Kit'.
+A central part of the app is defining camera's to observe and what defines a full 'PPE Kit'. All relevant files are found in: `ppe_app`.
+
+Rename `cameras_sample.json` to `cameras.json` and `ppe_zones_sample.json` to `ppe_zones.json`
 
 * `cameras.json`:
 
@@ -118,55 +120,71 @@ This app also includes a dashboard to view live snapshot annotations compared to
 
 **Note**: locally reachable MVs are not strictly required for the primary solution, just for the RTSP stream on the dashboard.
 
+#### Docker (Optional)
+This app provides several `Docker` files for easy deployment. `Docker` is the recommended deployment method. Install `Docker` [here](https://docs.docker.com/get-docker/).
+
 ## Installation/Configuration
 1. Clone this repository with `git clone [repository name]`
-2. Add the Meraki API Token and Meraki Org Name with the cameras to `config.py`:
+2. Rename the .env_sample file to .env. Rename config_sample.py to config.py (located in: `ppe_app/detection/config_sample.py`)
+3. Add the Meraki API Token and Meraki Org Name with the cameras to `.env`:
 ```python
 MERAKI_API_KEY = ""
 MERAKI_ORG_NAME = ""
 ```
-3. Add the MQTT Server URL and Port configured on the Meraki Dashboard:
+4. Add the MQTT Server URL and Port configured on the Meraki Dashboard (`config.py`):
 ```python
 # MQTT (snapshot mode)
 MQTT_SERVER = ""
 MQTT_PORT = 0
 ```
-4. Add the primary flask app url (for `app.py`) to `config.py`. By default, the app can run without being exposed to the internet at the default value shown below. This value is important for API communication between `app.py` and `ppe_detection`. Only deviate from the default if `app.py` is running in a different place than the default location.
+5. This app has 3 components in a microservice architecture that communicate via API. If run locally (without docker) use the default URLs in `config.py`. If run locally with docker, uncomment the relevant URLs. By default, each app can run without being exposed to the internet. If pieces of the app are deployed in different locations, updated the URLs accordingly.
 ```python
-# PPE Detection/Primary Flask URL (public/private)
-APP_URL = "http://127.0.0.1:4000"
+# PPE Detection/Primary Flask URL (public/private) - running locally with python
+VISUALIZATION_APP_URL = "http://127.0.0.1:4000"
+HOSTING_APP_URL = "http://127.0.0.1:3500"
+
+# Use the below values if deploying via docker
+# VISUALIZATION_APP_URL = "http://ppe_visualization_dashboard:4000"
+# HOSTING_APP_URL = "http://microsoft_teams_app:3500"
 ```
-5. Add the public URL for the flask app serving images to Microsoft Teams Messages in  `config.py`. This URL is most likely the Ngrok URL from the prerequisites.
+6. Add the public URL for the flask app serving images to Microsoft Teams Messages in  `config.py`. This URL is most likely the Ngrok URL from the prerequisites or public URL.
 ```python
 # Serving Images Flask URL (public)
 SERVE_IMAGES_URL = ""
 ```
-6. Add the Microsoft Teams Inbound Webhook URL and set the amount of time to retain the images served to Microsoft Teams Messages (only relevant if serving images with flask app previously discussed)
+7. Add the Microsoft Teams Inbound Webhook URL and set the amount of time to retain the images served to Microsoft Teams Messages (`.env`) (only relevant if serving images with flask app previously discussed)
 ```python
 # Microsoft Teams Integration
 MICROSOFT_TEAMS_URL = ""
 IMAGE_RETENTION_DAYS = 1
 ```
-7. Set up a Python virtual environment. Make sure Python 3 is installed in your environment, and if not, you may download Python [here](https://www.python.org/downloads/). Once Python 3 is installed in your environment, you can activate the virtual environment with the instructions found [here](https://docs.python.org/3/tutorial/venv.html).
-8. Install the requirements with `pip3 install -r requirements.txt`
+8. Set up a Python virtual environment. Make sure Python 3 is installed in your environment, and if not, you may download Python [here](https://www.python.org/downloads/). Once Python 3 is installed in your environment, you can activate the virtual environment with the instructions found [here](https://docs.python.org/3/tutorial/venv.html).
+9. Install the requirements with `pip3 install -r requirements.txt`
 
 ## Usage
-To run the program, there are several pieces of code to execute.
-
-Start by running the primary flask app `app.py`. This connects with `ppe_detection.py` and launches the visualization dashboard.
+To run the program, use the docker command:
 ```
-$ python3 app.py
+$ docker-compose up -d --build
 ```
 
-Then launch secondary flask app `serve_images.py`. This app makes hosted images available to Microsoft Teams Messages.
+To run individually with python (top-level-directory), there are several pieces of code to execute.
+
+Start by running the primary flask app `ppe_app/visualization_dashboard/app.py`. This connects with `ppe_detection.py` and launches the visualization dashboard.
 ```
-$ python3 serve_images.py
+$ python3 ppe_app/visualization_dashboard/app.py
 ```
 
-Finally, run `ppe_detection.py`. This starts the MQTT server, and runs the PPE Detection on snapshots taken when a person is detected.
+Then launch secondary flask app `microsoft_teams_app/serve_images.py`. This app makes hosted images available to Microsoft Teams Messages.
 ```
-$ python3 ppe_detection.py
+$ python3 microsoft_teams_app/serve_images.py
 ```
+
+Finally, run `ppe_app/detection/ppe_detection.py`. This starts the MQTT server, and runs the PPE Detection on snapshots taken when a person is detected.
+```
+$ python3 ppe_app/detection/ppe_detection.py
+```
+
+Once running, detection console output looks like: 
 
 ![](IMAGES/console_output.png)
 
@@ -182,9 +200,9 @@ Navigate to the url of `app.py` to select a camera, and view the live visualizat
 
 The most recent snapshots, annotated images, and hosted images can be found in the following directories:
 
-![](IMAGES/images_in_directory.png)
+![snapshots_in_directory.png](IMAGES/snapshots_in_directory.png)
 
-# Screenshots
+![hosted_images_in_directory.png](IMAGES/hosted_images_in_directory.png)
 
 ![/IMAGES/0image.png](/IMAGES/0image.png)
 

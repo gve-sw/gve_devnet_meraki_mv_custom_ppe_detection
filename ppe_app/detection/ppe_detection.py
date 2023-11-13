@@ -28,24 +28,35 @@ import cv2
 import meraki
 import paho.mqtt.client as mqtt
 import requests
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.panel import Panel
 from ultralytics import YOLO
 
 import config
 
+# Load Environment Variables
+load_dotenv()
+MERAKI_API_KEY = os.getenv("MERAKI_API_KEY")
+MICROSOFT_TEAMS_URL = os.getenv("MICROSOFT_TEAMS_URL")
+IMAGE_RETENTION_DAYS = os.getenv("IMAGE_RETENTION_DAYS")
+
 # Rich Console Instance
 console = Console()
 
 # Meraki Dashboard Instance
-dashboard = meraki.DashboardAPI(config.MERAKI_API_KEY, suppress_logging=True)
+dashboard = meraki.DashboardAPI(MERAKI_API_KEY, suppress_logging=True)
 
 # Configure global dictionaries
 CAMERAS = {}
 ZONE_PPE = {}
 
+# Absolute path to parent directory
+current_directory = os.path.dirname(os.path.abspath(__file__))
+parent_directory = os.path.dirname(current_directory)
+
 # YOLOv8 ML Model File
-MODEL = YOLO("ppe_dataset/weights/best.pt")
+MODEL = YOLO(f"{current_directory}/ppe_dataset/weights/best.pt")
 
 # Minimum confidence threshold for detections
 CONFIDENCE = 0.5
@@ -54,7 +65,7 @@ CONFIDENCE = 0.5
 active_threads = {}
 
 # Read in JSON Data Files, populate Global dictionaries
-with open(config.CAMERA_LIST, 'r') as cam_fp, open(config.ZONE_LIST, 'r') as zone_fp:
+with open(f'{parent_directory}/cameras.json', 'r') as cam_fp, open(f'{parent_directory}/ppe_zones.json', 'r') as zone_fp:
     ppe_zones = json.load(zone_fp)
     cameras = json.load(cam_fp)
 
@@ -71,11 +82,7 @@ with open(config.CAMERA_LIST, 'r') as cam_fp, open(config.ZONE_LIST, 'r') as zon
         CAMERAS[serial] = camera
 
 # Create Snapshots directory
-os.makedirs('static/snapshots', exist_ok=True)
-
-# Create Hosted Images directory
-os.makedirs('static/hosted_images', exist_ok=True)
-
+os.makedirs(f'{parent_directory}/snapshots', exist_ok=True)
 
 def generate_snapshot(serial):
     """
@@ -125,6 +132,23 @@ def download_file(file_name, file_url, folder):
     print(f'- Unsuccessful in 50 attempts retrieving {file_url}')
     return None
 
+def send_annotated_image_to_hosted_app(image_file_path, annotated_hosted_name):
+    """
+    Once an image is annotated, send the annotated image to the hosting app for Microsoft Teams messages
+    :param image_file_path: Annotated image file path
+    :param annotated_hosted_name: Annotated image name with unique ID (for hosting unique images)
+    :return:
+    """
+    # Open image in binary
+    files = {'image': (annotated_hosted_name, open(image_file_path, 'rb'))}
+
+    # Send image to hosting app
+    response = requests.post(config.HOSTING_APP_URL + '/receive_image', files=files)
+
+    if response.status_code == 200:
+        print("Image sent successfully to the other app!")
+    else:
+        print("Failed to send the image to the other app.")
 
 def create_label(img, color, class_name, confidence, top_left):
     """
@@ -214,7 +238,7 @@ def detect_ppe_on_image(serial_number, snapshot_path, required_ppe):
             img = create_label(img, color, output[4], output[5], top_left)
 
     # Save image output to snapshots folder
-    cv2.imwrite(f'static/snapshots/{serial_number}_snapshot_annotated.jpeg', img)
+    cv2.imwrite(f'{parent_directory}/snapshots/{serial_number}_snapshot_annotated.jpeg', img)
 
     return classes
 
@@ -265,7 +289,7 @@ def process_message(serial_number, payload_dict):
 
             # Generate and download snapshot
             image_url = generate_snapshot(serial_number)
-            snapshot_path = download_file(f'{serial_number}_snapshot', image_url, 'static/snapshots')
+            snapshot_path = download_file(f'{serial_number}_snapshot', image_url, f'{parent_directory}/snapshots')
 
             # Run Inference logic here (detect ppe! - where the magic happens!)
             ppe_detected = detect_ppe_on_image(serial_number, snapshot_path, required_ppe)
@@ -282,7 +306,12 @@ def process_message(serial_number, payload_dict):
                 image_name = snapshot_path.split('/')[-1].split('.jpeg')[0]
                 annotated_name = image_name + '_annotated.jpeg'
                 annotated_hosted_name = image_name + f'_hosted_{unique_id}.jpeg'
-                shutil.copy(f'static/snapshots/{annotated_name}', f'static/hosted_images/{annotated_hosted_name}')
+
+                # Try to send image to hosting app
+                try:
+                    send_annotated_image_to_hosted_app(f'{parent_directory}/snapshots/{annotated_name}', annotated_hosted_name)
+                except Exception as e:
+                    console.print(f'Unable to send image to hosting app: {str(e)}')
 
                 # On violation, send Microsoft Teams message
                 console.print('Sending Microsoft teams message...')
@@ -294,7 +323,7 @@ def process_message(serial_number, payload_dict):
 
             # Send State Update to API Endpoint on Flask App
             try:
-                flask_app_url = f"{config.APP_URL}/update_state"
+                flask_app_url = f"{config.VISUALIZATION_APP_URL}/update_state"
                 state_data = {"ppe_state": ppe_state}
 
                 console.print(f"Updating PPE State to [blue]{ppe_state}[/]...")
@@ -332,7 +361,7 @@ def send_microsoft_teams_message(serial_number, annotated_hosted_name):
     camera_data = CAMERAS[serial_number]
 
     # Load card file
-    with open(f'static/cards/default_card.json', "r") as json_file:
+    with open(f'{current_directory}/cards/default_card.json', "r") as json_file:
         card_payload = json.load(json_file)
 
     # Get data and time stamp
@@ -350,7 +379,7 @@ def send_microsoft_teams_message(serial_number, annotated_hosted_name):
 
     # Set Retention Period Warning
     card_payload['body'][4][
-        'text'] = f"Note: Image will automatically be removed in {config.IMAGE_RETENTION_DAYS} day(s)"
+        'text'] = f"Note: Image will automatically be removed in {IMAGE_RETENTION_DAYS} day(s)"
 
     headers = {'Content-Type': 'application/json'}
     payload = {
@@ -364,7 +393,7 @@ def send_microsoft_teams_message(serial_number, annotated_hosted_name):
     }
 
     # Send the image to the Teams channel
-    response = requests.post(config.MICROSOFT_TEAMS_URL, headers=headers, json=payload)
+    response = requests.post(MICROSOFT_TEAMS_URL, headers=headers, json=payload)
     console.print("- [green]Successfully sent Microsoft Teams notification[/]")
 
 

@@ -37,17 +37,17 @@
                 <form action="/display" method="POST">
                     <!--Dropdown Select-->
                     <div class="form-group base-margin-bottom">
-                            <div class="form-group dropdown">
-                                <div class="form-group__text select">
-                                    <input id="select-type-styled" name="camera_selected">
-                                    <label for="select-type-styled">Camera</label>
-                                </div>
-                                <div class="dropdown__menu" id="dropdown-option">
-                                    {% for key, value in camera_list.items() %}
-                                        <a>{{key}}</a>
-                                    {% endfor %}
-                                </div>
+                        <div class="form-group dropdown">
+                            <div class="form-group__text select">
+                                <input id="select-type-styled" name="camera_selected">
+                                <label for="select-type-styled">Camera</label>
                             </div>
+                            <div class="dropdown__menu" id="dropdown-option">
+                                {% for key, value in camera_list.items() %}
+                                <a>{{key}}</a>
+                                {% endfor %}
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Button area-->
@@ -78,25 +78,25 @@
                 <div class="row no-gutters">
                     <div class="col-lg-12 qtr-margin-bottom">
 
-                    {% for key, value in required_ppe.items()%}
+                        {% for key, value in required_ppe.items()%}
                         {% if value == True %}
-                            <div class="form-group form-group--inline">
-                                <label class="checkbox disabled">
-                                    <input type="checkbox" checked>
-                                    <span class="checkbox__input"></span>
-                                    <span class="checkbox__label">{{key}}</span>
-                                </label>
-                            </div>
+                        <div class="form-group form-group--inline">
+                            <label class="checkbox disabled">
+                                <input type="checkbox" checked>
+                                <span class="checkbox__input"></span>
+                                <span class="checkbox__label">{{key}}</span>
+                            </label>
+                        </div>
                         {% else %}
-                         <div class="form-group form-group--inline">
-                                <label class="checkbox disabled">
-                                    <input type="checkbox">
-                                    <span class="checkbox__input"></span>
-                                    <span class="checkbox__label">{{key}}</span>
-                                </label>
-                            </div>
+                        <div class="form-group form-group--inline">
+                            <label class="checkbox disabled">
+                                <input type="checkbox">
+                                <span class="checkbox__input"></span>
+                                <span class="checkbox__label">{{key}}</span>
+                            </label>
+                        </div>
                         {% endif %}
-                    {% endfor %}
+                        {% endfor %}
                     </div>
                 </div>
             </div>
@@ -108,7 +108,7 @@
             <div class="panel panel--loose panel--raised">
                 <h2 class="subtitle">Most Recent Snapshot (PPE Annotated)</h2>
                 <hr>
-                <img id="ppe_image" src="{{ image_path }}" width="900" height="640">
+                <img id="ppe_image" src="{{ url_for('retrieve_image', serialNumber=serial_number) }}" width="900" height="640">
                 <hr>
                 <div class="row half-margin-left">
                     <div class="col-md-6">
@@ -138,6 +138,7 @@
             fetch('/retrieve_image/{{serial_number}}')
                 .then(response => response.json())
                 .then(data => {
+                    console.log(data)
                     // Create a new image element
                     imgElement.src = data['image_path'] + "?t=" + new Date().getTime();
                 })
@@ -152,40 +153,40 @@
     }
 
     function updateState() {
-    // Make an AJAX request to the Flask app to get the current state
-    fetch('/get_state')
-        .then(response => response.json())
-        .then(data => {
-            var stateContainer = document.getElementById('ppe_state');
-            var iconContainer = document.getElementById('ppe_icon');
-            var stateIndicator = '';
-            var iconIndicator = '';
+        // Make an AJAX request to the Flask app to get the current state
+        fetch('/get_state')
+            .then(response => response.json())
+            .then(data => {
+                var stateContainer = document.getElementById('ppe_state');
+                var iconContainer = document.getElementById('ppe_icon');
+                var stateIndicator = '';
+                var iconIndicator = '';
 
-            if (data.current_state === true) {
-                stateIndicator = `<b class="subtitle">PPE State: Valid</b>`;
-                iconIndicator = `<div class="state-indicator state-on"></div>`
-            } else if (data.current_state === false) {
-                stateIndicator = `<b class="subtitle">PPE State: Invalid</b>`;
-                iconIndicator = `<div class="state-indicator state-off"></div>`
-            } else {
-                stateIndicator = `<b class="subtitle">PPE State: Unknown</b>`;
-                iconIndicator = `<div class="state-indicator state-unknown"></div>`
-            }
+                if (data.current_state === true) {
+                    stateIndicator = `<b class="subtitle">PPE State: Valid</b>`;
+                    iconIndicator = `<div class="state-indicator state-on"></div>`
+                } else if (data.current_state === false) {
+                    stateIndicator = `<b class="subtitle">PPE State: Invalid</b>`;
+                    iconIndicator = `<div class="state-indicator state-off"></div>`
+                } else {
+                    stateIndicator = `<b class="subtitle">PPE State: Unknown</b>`;
+                    iconIndicator = `<div class="state-indicator state-unknown"></div>`
+                }
 
-            stateContainer.innerHTML = stateIndicator;
-            iconContainer.innerHTML = iconIndicator;
-        })
-        .catch(error => {
-            console.error('Error fetching state:', error);
-        });
-}
+                stateContainer.innerHTML = stateIndicator;
+                iconContainer.innerHTML = iconIndicator;
+            })
+            .catch(error => {
+                console.error('Error fetching state:', error);
+            });
+    }
 
-// Call the updateState function initially and every 5 seconds
-updateState();
-setInterval(updateState, 5000);
+    // Call the updateState function initially and every 5 seconds
+    updateState();
+    setInterval(updateState, 5000);
 
-// Periodically update the image source every 5 seconds (5000 milliseconds)
-setInterval(updateImageSource, 5000);
+    // Periodically update the image source every 5 seconds (5000 milliseconds)
+    setInterval(updateImageSource, 5000);
 
 
 </script>

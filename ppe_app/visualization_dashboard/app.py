@@ -23,10 +23,13 @@ import os
 import cv2
 import meraki
 import requests
-from flask import Flask, render_template, request, Response, session, jsonify
+from flask import Flask, render_template, request, Response, session, jsonify, send_from_directory
 from rich.console import Console
+from dotenv import load_dotenv
 
-import config
+# Load Environment Variables
+load_dotenv()
+MERAKI_API_KEY = os.getenv("MERAKI_API_KEY")
 
 # Global variables
 app = Flask(__name__)
@@ -36,7 +39,7 @@ app.secret_key = 'super_duper_secret'
 console = Console()
 
 # Meraki Dashboard Instance
-dashboard = meraki.DashboardAPI(config.MERAKI_API_KEY, suppress_logging=True)
+dashboard = meraki.DashboardAPI(MERAKI_API_KEY, suppress_logging=True)
 
 # Configure global dictionaries
 CAMERAS = {}
@@ -45,8 +48,15 @@ ZONE_PPE = {}
 # Global PPE State
 current_state = None
 
+# Absolute path to parent directory
+parent_directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+# Create Snapshots directory
+os.makedirs(f'{parent_directory}/snapshots', exist_ok=True)
+
 # Read in JSON Data Files, populate Global dictionaries
-with open(config.CAMERA_LIST, 'r') as cam_fp, open(config.ZONE_LIST, 'r') as zone_fp:
+with open(f'{parent_directory}/cameras.json', 'r') as cam_fp, open(f'{parent_directory}/ppe_zones.json', 'r') as zone_fp:
     ppe_zones = json.load(zone_fp)
     cameras = json.load(cam_fp)
 
@@ -113,7 +123,7 @@ def find_image_by_serial(serial_number):
     :return: File name
     """
     # List of image filenames
-    image_filenames = os.listdir('static/snapshots')
+    image_filenames = os.listdir(f'{parent_directory}/snapshots')
 
     # Iterate through images list, find most recent annotated image
     for filename in image_filenames:
@@ -165,14 +175,10 @@ def display():
     # Store stream in session object for requests to /video_feed
     session['rtsp_url'] = rtsp_url
 
-    # Get the most recent annotated image (if it exists)
-    image_filename = find_image_by_serial(serial_number)
-    image_path = os.path.join("static/snapshots", image_filename) if image_filename else None
-
     # Render page
     return render_template('index.html', hiddenLinks=False, timeAndLocation=getSystemTimeAndLocation(),
                            errorcode=error_code, camera_list=CAMERAS, ppe_zone_name=ppe_zone_name,
-                           required_ppe=required_ppe, image_path=image_path, current_state=current_state,
+                           required_ppe=required_ppe, current_state=current_state,
                            display_feeds=True, serial_number=serial_number)
 
 
@@ -198,17 +204,17 @@ def get_state():
     return jsonify({'current_state': current_state})
 
 
-@app.route('/retrieve_image/<serial_number>')
-def retrieve_image(serial_number):
+@app.route('/retrieve_image/<serialNumber>')
+def retrieve_image(serialNumber):
     """
     Get the most recent annotated image for display (based on Serial section from front end index.html page)
-    :param serial_number: Camera Serial to grab the most recent annotated image for
+    :param serialNumber: Camera Serial to grab the most recent annotated image for
     """
     # Get the most recent annotated image (if it exists)
-    image_filename = find_image_by_serial(serial_number)
-    image_path = os.path.join("static/snapshots", image_filename) if image_filename else None
+    image_filename = find_image_by_serial(serialNumber)
 
-    return jsonify({'image_path': image_path})
+    # Use send_from_directory to send the image file to the client
+    return send_from_directory(f'{parent_directory}/snapshots', image_filename)
 
 
 @app.route('/video_feed')

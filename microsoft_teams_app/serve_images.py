@@ -19,10 +19,10 @@ __license__ = "Cisco Sample Code License, Version 1.1"
 import threading
 import os
 import time
-from flask import Flask, send_from_directory
-from rich.console import Console
 
-import config
+from dotenv import load_dotenv
+from flask import Flask, send_from_directory, request
+from rich.console import Console
 
 # Global variables
 app = Flask(__name__)
@@ -30,6 +30,9 @@ app = Flask(__name__)
 # Rich Console Instance
 console = Console()
 
+# Load Environment Variables
+load_dotenv()
+IMAGE_RETENTION_DAYS = os.getenv("IMAGE_RETENTION_DAYS")
 
 def cleanup_old_images(images_directory, retention_period_days):
     """
@@ -73,13 +76,30 @@ def serve_image(filename):
     :param filename: Target filename to serve
     :return: File in bytes
     """
-    return send_from_directory('static/hosted_images', filename)
+    return send_from_directory('hosted_images', filename)
 
+@app.route('/receive_image', methods=['POST'])
+def receive_image():
+    """
+    Receive annotated image from ppe app, save to hosted images file
+    :return:
+    """
+    if 'image' in request.files:
+        image_file = request.files['image']
+        image_name = request.files['image'].filename
+
+        image_file.save(f'hosted_images/{image_name}')  # Save the received image to a specific location
+        return 'Image received successfully', 200
+    else:
+        return 'Failed to receive image', 400
 
 if __name__ == "__main__":
     # Start background thread to clean up hosted images
-    cleanup_thread = threading.Thread(target=cleanup_thread, args=('static/hosted_images', config.IMAGE_RETENTION_DAYS))
+    cleanup_thread = threading.Thread(target=cleanup_thread, args=('hosted_images', int(IMAGE_RETENTION_DAYS)))
     cleanup_thread.daemon = True
     cleanup_thread.start()
+
+    # Create Hosted Images directory
+    os.makedirs('hosted_images', exist_ok=True)
 
     app.run(host='0.0.0.0', port=3500, debug=False)
